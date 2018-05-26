@@ -150,7 +150,7 @@ class Bottleneck(nn.Module):
 class P3D(nn.Module):
 
     def __init__(self, block, layers, modality='RGB',
-        shortcut_type='B', num_classes=400,dropout=0.9,ST_struc=('A','B','C')):
+        shortcut_type='B', num_classes=400,dropout=0.5,ST_struc=('A','B','C')):
         self.inplanes = 64
         super(P3D, self).__init__()
         # self.conv1 = nn.Conv3d(3, 64, kernel_size=7, stride=(1, 2, 2),
