@@ -5,7 +5,6 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
-from torchvision import transforms
 
 import os
 import shutil
@@ -16,22 +15,24 @@ from PIL import Image
 from p3d_dataset import P3DDataSet
 from p3d_model import P3D199,get_optim_policies
 
-train_transform=transforms.Compose(
+import video_transforms
+
+train_transform=video_transforms.Compose(
     [
-     transforms.Resize((182, 242)),
-     transforms.CenterCrop(160),
-     transforms.ToTensor(),
-     transforms.Normalize((0.485,0.456,0.406),
-                          (0.229,0.224,0.225))]
+     video_transforms.RandomResizedCrop(160),
+     video_transforms.RandomHorizontalFlip(),
+     video_transforms.ToTensor(),
+     video_transforms.Normalize((0.485,0.456,0.406),
+                      (0.229,0.224,0.225))]
 )
 
-val_transform=transforms.Compose(
+val_transform=video_transforms.Compose(
     [
-     transforms.Resize((182,242)),
-     transforms.CenterCrop(160),
-     transforms.ToTensor(),
-     transforms.Normalize((0.485,0.456,0.406),
-                          (0.229,0.224,0.225))]
+     video_transforms.Resize((182,242)),
+     video_transforms.CenterCrop(160),
+     video_transforms.ToTensor(),
+     video_transforms.Normalize((0.485,0.456,0.406),
+                      (0.229,0.224,0.225))]
 )
 
 train_loader=torch.utils.data.DataLoader(
@@ -40,7 +41,7 @@ train_loader=torch.utils.data.DataLoader(
                modality="RGB",
                image_tmpl="frame{:06d}.jpg",
                transform=train_transform),
-    batch_size=8,
+    batch_size=12,
     shuffle=True,
     num_workers=24,
     pin_memory=True
@@ -104,7 +105,7 @@ def adjust_learning_rate(learning_rate,weight_decay,optimizer, epoch):
 
 def train(train_loader,net,criterion,optimizer,epoch):
 
-    net = nn.DataParallel(net, device_ids=[0])
+    net = nn.DataParallel(net, device_ids=[0,1])
 
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -115,6 +116,7 @@ def train(train_loader,net,criterion,optimizer,epoch):
     for i,data in enumerate(train_loader,0):
         inputs,labels=data
         inputs,labels=Variable(inputs.cuda()),Variable(labels.cuda())
+        # inputs,labels=Variable(inputs),Variable(labels)
 
         outputs=net(inputs)
         loss=criterion(outputs,labels)
@@ -141,7 +143,7 @@ def train(train_loader,net,criterion,optimizer,epoch):
 
 def val(val_loader,net,criterion):
 
-    net = nn.DataParallel(net,device_ids=[0])
+    net = nn.DataParallel(net,device_ids=[0,1])
 
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -182,11 +184,13 @@ def main():
     model = model.cuda()
     criterion = nn.CrossEntropyLoss().cuda()
 
+    # criterion = nn.CrossEntropyLoss()
+
     cudnn.benchmark = True
 
     policies = get_optim_policies(model)
     learning_rate = 0.001
-    weight_decay = 5e-4
+    weight_decay = 0
     optimizer = optim.SGD(policies, lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
 
     start_epoch = 0
