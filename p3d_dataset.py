@@ -45,16 +45,12 @@ class P3DDataSet(data.Dataset):
         return self.get(record)
 
     def get(self, record):
-        clips = list()
-        for i in xrange(self.length):
+        clip = list()
+        for i in range(self.length):
             img = self._load_image(record.path,i+record.start_frames)
-            img = self.transform(img)
-            img = img.numpy()
-            clips.append(img)
-        clips = np.array(clips)
-        clips = clips.transpose(1,0,2,3)
-        clips = torch.from_numpy(clips)
-        return clips, record.label
+            clip.append(img)
+        clip = self.transform(clip)
+        return clip, record.label
 
     def __len__(self):
         return len(self.clip_list)
